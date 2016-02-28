@@ -9,15 +9,20 @@ class OrthoMaze
     end
 
     def set_cell(i, j, val)
+        i %= @nrows
+        j %= @ncols
         @cells[i][j] = val
     end
 
     def cell(i, j)
+        i %= @nrows
+        j %= @ncols
         @cells[i][j]
     end
 
-    def include?(cell)
-        i, j = cell
+    def include?(pos)
+        i, j = pos
+        return false if cell(i, j) == :outline
         (0...@nrows).include?(i) && (0...@ncols).include?(j)
     end
 
@@ -64,7 +69,7 @@ class OrthoMaze
         end
     end
 
-    def outlined(value = :wall)
+    def outlined(value = :outline)
         set_vertical_line(rows: 0...@nrows, col: 0, value: value)
         set_vertical_line(rows: 0...@nrows, col: @ncols - 1, value: value)
         set_horizontal_line(cols: 1...@ncols - 1, row: 0, value: value)
@@ -79,7 +84,7 @@ class OrthoMaze
         (1...@nrows).each do |row|
             (1...@ncols).each do |col|
                 if wall_h || wall_v
-                    set_cell(row, col, :wall)
+                    set_cell(row, col, :wall) if cell(row, col) != :outline
                 end
                 wall_v = !wall_v
             end
@@ -98,6 +103,7 @@ class OrthoMazeConsolePrinter
     CELL_MAP = {
         wall: '[ ]',
         empty: '   ',
+        outline: '[*]',
     }
 
     def initialize(maze)
@@ -127,6 +133,8 @@ class RecursiveBacktrackerGenerator
     end
 
     def carvable_walls
+        # TODO: walls are not currently carvable unless we can reach an empty space
+        # through them. We should also allow carving an edge wall.
         current_cell = @stack.last
         walls = @maze.neighbours(*current_cell).select {|cell| @maze.cell(*cell) == :wall}
         targets = {}
@@ -159,6 +167,11 @@ class RecursiveBacktrackerGenerator
 
     end
 
+    def add_exit
+        @maze.set_cell(-3, -1, :empty)
+        @maze.set_cell(-3, -2, :empty)
+    end
+
     def generate
         @maze.add_grid
 
@@ -169,7 +182,13 @@ class RecursiveBacktrackerGenerator
 
     def self.generate(maze)
         generator = self.new(maze)
+
+        # Entrance
         generator.carve_tunnel([0, 1], [1, 1])
+
+        # Exit
+        generator.add_exit
+
         generator.generate
     end
 end
