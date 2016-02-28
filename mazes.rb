@@ -2,7 +2,7 @@ require 'set'
 require 'pry'
 
 class OrthoMaze
-    def initialize(nrows: 20, ncols: 20)
+    def initialize(nrows: 19, ncols: 19)
         @cells = Array.new(nrows) {Array.new(ncols, :empty)}
         @nrows = nrows
         @ncols = ncols
@@ -132,6 +132,46 @@ class RecursiveBacktrackerGenerator
         @stack.empty?
     end
 
+    def step
+        targets = carvable_walls
+        if targets.empty?
+            @stack.pop
+        else
+            wall = targets.keys.sample
+            target = targets[wall]
+            carve_tunnel(wall, target)
+        end
+
+    end
+
+    def add_exit
+        # TODO: this produces little islands because we can approach the
+        # seen area from two sides.
+        @maze.set_cell(-3, -1, :empty)
+        @maze.set_cell(-3, -2, :empty)
+        @seen.add([-3, -1])
+        @seen.add([-3, -2])
+    end
+
+    def add_entrance
+        carve_tunnel([1, 0], [1, 1])
+    end
+
+    def generate
+        until done?
+            step
+        end
+    end
+
+    def self.generate(maze)
+        generator = self.new(maze)
+        generator.add_exit
+        generator.add_entrance
+
+        generator.generate
+    end
+
+private
     def carvable_walls
         # TODO: walls are not currently carvable unless we can reach an empty space
         # through them. We should also allow carving an edge wall.
@@ -153,43 +193,6 @@ class RecursiveBacktrackerGenerator
         @maze.set_cell(wall.first, wall.last, :empty)
         @seen.add(target)
         @stack << target
-    end
-
-    def step
-        targets = carvable_walls
-        if targets.empty?
-            @stack.pop
-        else
-            wall = targets.keys.sample
-            target = targets[wall]
-            carve_tunnel(wall, target)
-        end
-
-    end
-
-    def add_exit
-        @maze.set_cell(-3, -1, :empty)
-        @maze.set_cell(-3, -2, :empty)
-    end
-
-    def generate
-        @maze.add_grid
-
-        until done?
-            step
-        end
-    end
-
-    def self.generate(maze)
-        generator = self.new(maze)
-
-        # Entrance
-        generator.carve_tunnel([0, 1], [1, 1])
-
-        # Exit
-        generator.add_exit
-
-        generator.generate
     end
 end
 
